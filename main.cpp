@@ -7,6 +7,8 @@
 //
 // Expected layout next to the executable:
 //   <game>.exe
+//   <game>.kpak              (packaged assets — preferred)
+//   OR
 //   data/
 //     game.config            (window title / size / fullscreen)
 //     scene.world
@@ -36,17 +38,22 @@ namespace fs = std::filesystem;
  * variable script updates, physics step, and rendering) until the window
  * closes. Cleans up scripts, physics, renderer, and window on exit.
  *
+ * If a .kpak package file is found next to the executable, it is mounted
+ * as the virtual file system and assets are streamed directly from it.
+ *
  * @param argc Argument count; @p argv[0] is used to locate the executable directory.
  * @param argv Argument vector; @p argv[0] is the executable path.
  * @return 0 on normal exit.
  */
 int main(int argc, char **argv)
 {
-    // Resolve the game data folder relative to the executable.
+    // Resolve the executable directory.
     fs::path exeDir = (argc > 0) ? fs::path(argv[0]).parent_path() : fs::current_path();
     if (exeDir.empty())
         exeDir = fs::current_path();
-    fs::path dataDir = exeDir / "data";
+
+    // Initialize the virtual file system — auto-detects .kpak vs data/ folder.
+    kFileSystem::init(exeDir.string(), "data");
 
     // ---- Read game.config --------------------------------------------------
     std::string title = "Kemena3D Game";
@@ -54,16 +61,12 @@ int main(int argc, char **argv)
     int  height     = 720;
     bool fullscreen = false;
 
-    fs::path cfgPath = dataDir / "game.config";
-    if (!fs::exists(cfgPath))
-        cfgPath = exeDir / "game.config";
-    if (fs::exists(cfgPath))
+    kString cfgJson = kFileSystem::readFileString("game.config");
+    if (!cfgJson.empty())
     {
         try
         {
-            std::ifstream f(cfgPath);
-            nlohmann::json cfg;
-            f >> cfg;
+            nlohmann::json cfg = nlohmann::json::parse(cfgJson);
             title      = cfg.value("title", title);
             width      = cfg.value("width", width);
             height     = cfg.value("height", height);
@@ -86,9 +89,9 @@ int main(int argc, char **argv)
     kAssetManager *assetManager = createAssetManager();
     kWorld *world = createWorld(assetManager);
 
-    fs::path worldPath = dataDir / "scene.world";
-    if (!world->loadFromFile(worldPath.string()))
-        printf("Runtime: failed to load world '%s'.\n", worldPath.string().c_str());
+    // Load the world — VFS resolves scene.world from package or data/ folder.
+    if (!world->loadFromFile("scene.world"))
+        printf("Runtime: failed to load world.\n");
 
     // Choose the scene to render: first active scene, else the first one.
     kScene *scene = nullptr;
@@ -127,5 +130,6 @@ int main(int argc, char **argv)
     world->stopPhysics();
     renderer->destroy();
     window->destroy();
+    kFileSystem::shutdown();
     return 0;
 }
