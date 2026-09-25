@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-DEFAULT_SDK_DIR = str(SCRIPT_DIR.parent / "kemena3d" / "Output")
+DEFAULT_SDK_DIR = str(SCRIPT_DIR.parent / "Kemena3D-SDK" / "Output")
 
 
 def run_cmd(cmd, cwd=None):
@@ -86,8 +86,8 @@ def main():
             (sdk / "Release" / "include" / "kemena" / "kemena.h").exists()):
         print(f"\n[ERROR] '{sdk_dir}' is not a built Kemena3D SDK "
               f"(no Debug|Release/include/kemena/kemena.h).")
-        print("        Build it first with kemena3d/build_sdk.py, then pass its "
-              "Output folder (e.g. D:/Projects/Kemena3D/kemena3d/Output).")
+        print("        Build it first with Kemena3D-SDK/build_sdk.py, then pass its "
+              "Output folder (e.g. D:/Projects/Kemena3D/Kemena3D-SDK/Output).")
         sys.exit(1)
 
     for mode in modes:
